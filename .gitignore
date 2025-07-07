@@ -21,7 +21,7 @@
 # Go workspace file
 go.work
 
-./sequential-thinking
+sequential-thinking
 
 ###
 .direnv
