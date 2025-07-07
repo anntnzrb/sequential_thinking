@@ -1,0 +1,23 @@
+version = "2"
+
+[run]
+timeout = "5m"
+tests = true
+
+[formatters]
+enable = ["gofumpt", "gci"]
+
+[linters]
+enable = [
+    "bodyclose", # https analyzer
+    "errcheck",
+    "goconst", # repeated strings
+    "gocritic",
+    "gomoddirectives",
+    "gosec",
+    "govet",
+    "staticcheck",
+]
+
+[formatters.settings.gofumpt]
+extra-rules = true
