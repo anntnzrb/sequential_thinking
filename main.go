@@ -4,7 +4,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/fatih/color"
@@ -36,18 +35,15 @@ type ThoughtData struct {
 func validateThoughtData(args map[string]any) (*ThoughtData, error) {
 	var data ThoughtData
 
-	// Decode using mapstructure
 	if err := mapstructure.Decode(args, &data); err != nil {
 		return nil, fmt.Errorf("failed to decode input: %v", err)
 	}
 
-	// Validate using validator
 	validate := validator.New()
 	if err := validate.Struct(&data); err != nil {
 		return nil, fmt.Errorf("validation failed: %v", err)
 	}
 
-	// Custom business logic validation
 	if data.ThoughtNumber > data.TotalThoughts {
 		return nil, fmt.Errorf("thoughtNumber cannot be greater than totalThoughts")
 	}
@@ -61,26 +57,23 @@ func formatThought(data *ThoughtData) string {
 	}
 
 	cyan := color.New(color.FgCyan).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	blue := color.New(color.FgBlue).SprintFunc()
 
 	var b strings.Builder
-	thoughtNum := strconv.Itoa(data.ThoughtNumber)
-	totalNum := strconv.Itoa(data.TotalThoughts)
 
-	fmt.Fprintf(&b, "%s %s (%s/%s)\n",
-		cyan("💭 Thought"), yellow(thoughtNum), yellow(thoughtNum), yellow(totalNum))
+	fmt.Fprintf(&b, "%s %d (%d/%d)\n",
+		cyan("💭 Thought"), data.ThoughtNumber, data.ThoughtNumber, data.TotalThoughts)
 
 	if data.IsRevision != nil && *data.IsRevision && data.RevisesThought != nil {
-		fmt.Fprintf(&b, "%s %s\n",
-			red("🔄 Revising thought"), yellow(strconv.Itoa(*data.RevisesThought)))
+		fmt.Fprintf(&b, "%s %d\n",
+			red("🔄 Revising thought"), *data.RevisesThought)
 	}
 
 	if data.BranchFromThought != nil {
-		fmt.Fprintf(&b, "%s %s",
-			blue("🌿 Branching from thought"), yellow(strconv.Itoa(*data.BranchFromThought)))
+		fmt.Fprintf(&b, "%s %d",
+			blue("🌿 Branching from thought"), *data.BranchFromThought)
 		if data.BranchID != "" {
 			fmt.Fprintf(&b, " (%s)", blue(data.BranchID))
 		}
