@@ -28,7 +28,7 @@ type ThoughtData struct {
 	BranchFromThought *int   `json:"branchFromThought,omitempty" mapstructure:"branchFromThought"`
 	BranchID          string `json:"branchId,omitempty" mapstructure:"branchId"`
 	NeedsMoreThoughts *bool  `json:"needsMoreThoughts,omitempty" mapstructure:"needsMoreThoughts"`
-	NextThoughtNeeded bool   `json:"nextThoughtNeeded" mapstructure:"nextThoughtNeeded" validate:"required"`
+	NextThoughtNeeded bool   `json:"nextThoughtNeeded" mapstructure:"nextThoughtNeeded"`
 }
 
 func validateThoughtData(args map[string]any) (*ThoughtData, error) {
@@ -134,7 +134,7 @@ func NewSequentialThinkingTool() fxctx.Tool {
 						"description": "If reaching end but realizing more thoughts needed",
 					},
 				},
-				Required: []string{"thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"},
+				Required: []string{"thought", "thoughtNumber", "totalThoughts"},
 			},
 		},
 		func(args map[string]any) *mcp.CallToolResult {
