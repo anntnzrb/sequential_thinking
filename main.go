@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/go-playground/validator/v10"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/strowk/foxy-contexts/pkg/app"
 	"github.com/strowk/foxy-contexts/pkg/fxctx"
 	"github.com/strowk/foxy-contexts/pkg/mcp"
@@ -20,80 +22,37 @@ func ptr[T any](v T) *T {
 
 // ThoughtData represents the input parameters for sequential thinking operations.
 type ThoughtData struct {
-	Thought           string `json:"thought"`
-	ThoughtNumber     int    `json:"thoughtNumber"`
-	TotalThoughts     int    `json:"totalThoughts"`
-	IsRevision        *bool  `json:"isRevision,omitempty"`
-	RevisesThought    *int   `json:"revisesThought,omitempty"`
-	BranchFromThought *int   `json:"branchFromThought,omitempty"`
-	BranchID          string `json:"branchId,omitempty"`
-	NeedsMoreThoughts *bool  `json:"needsMoreThoughts,omitempty"`
-	NextThoughtNeeded bool   `json:"nextThoughtNeeded"`
+	Thought           string `json:"thought" mapstructure:"thought" validate:"required"`
+	ThoughtNumber     int    `json:"thoughtNumber" mapstructure:"thoughtNumber" validate:"required,min=1"`
+	TotalThoughts     int    `json:"totalThoughts" mapstructure:"totalThoughts" validate:"required,min=1"`
+	IsRevision        *bool  `json:"isRevision,omitempty" mapstructure:"isRevision"`
+	RevisesThought    *int   `json:"revisesThought,omitempty" mapstructure:"revisesThought"`
+	BranchFromThought *int   `json:"branchFromThought,omitempty" mapstructure:"branchFromThought"`
+	BranchID          string `json:"branchId,omitempty" mapstructure:"branchId"`
+	NeedsMoreThoughts *bool  `json:"needsMoreThoughts,omitempty" mapstructure:"needsMoreThoughts"`
+	NextThoughtNeeded bool   `json:"nextThoughtNeeded" mapstructure:"nextThoughtNeeded" validate:"required"`
 }
 
 func validateThoughtData(args map[string]any) (*ThoughtData, error) {
-	thought, ok := args["thought"].(string)
-	if !ok || thought == "" {
-		return nil, fmt.Errorf("thought is required and must be a non-empty string")
+	var data ThoughtData
+
+	// Decode using mapstructure
+	if err := mapstructure.Decode(args, &data); err != nil {
+		return nil, fmt.Errorf("failed to decode input: %v", err)
 	}
 
-	thoughtNumberFloat, ok := args["thoughtNumber"].(float64)
-	if !ok {
-		return nil, fmt.Errorf("thoughtNumber is required and must be a number")
-	}
-	thoughtNumber := int(thoughtNumberFloat)
-
-	totalThoughtsFloat, ok := args["totalThoughts"].(float64)
-	if !ok {
-		return nil, fmt.Errorf("totalThoughts is required and must be a number")
-	}
-	totalThoughts := int(totalThoughtsFloat)
-
-	nextThoughtNeeded, ok := args["nextThoughtNeeded"].(bool)
-	if !ok {
-		return nil, fmt.Errorf("nextThoughtNeeded is required and must be a boolean")
+	// Validate using validator
+	validate := validator.New()
+	if err := validate.Struct(&data); err != nil {
+		return nil, fmt.Errorf("validation failed: %v", err)
 	}
 
-	if thoughtNumber < 1 {
-		return nil, fmt.Errorf("thoughtNumber must be >= 1")
-	}
-	if totalThoughts < 1 {
-		return nil, fmt.Errorf("totalThoughts must be >= 1")
-	}
-	if thoughtNumber > totalThoughts {
+	// Custom business logic validation
+	if data.ThoughtNumber > data.TotalThoughts {
 		return nil, fmt.Errorf("thoughtNumber cannot be greater than totalThoughts")
 	}
 
-	data := &ThoughtData{
-		Thought:           thought,
-		ThoughtNumber:     thoughtNumber,
-		TotalThoughts:     totalThoughts,
-		NextThoughtNeeded: nextThoughtNeeded,
-	}
-
-	if isRevision, ok := args["isRevision"].(bool); ok {
-		data.IsRevision = &isRevision
-	}
-
-	if revisesThoughtFloat, ok := args["revisesThought"].(float64); ok {
-		revisesThought := int(revisesThoughtFloat)
-		data.RevisesThought = &revisesThought
-	}
-
-	if branchFromThoughtFloat, ok := args["branchFromThought"].(float64); ok {
-		branchFromThought := int(branchFromThoughtFloat)
-		data.BranchFromThought = &branchFromThought
-	}
-
-	if branchID, ok := args["branchId"].(string); ok {
-		data.BranchID = branchID
-	}
-
-	if needsMoreThoughts, ok := args["needsMoreThoughts"].(bool); ok {
-		data.NeedsMoreThoughts = &needsMoreThoughts
-	}
-
-	return data, nil
+	return &data, nil
 }
 
 func formatThought(data *ThoughtData) string {
