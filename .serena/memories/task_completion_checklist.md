@@ -1,21 +1,11 @@
 # Task Completion Checklist
 
-When completing a task in this Go project:
+When completing a task:
 
-## Code Quality
-1. run code formatter
-2. run static analysis tool
-3. ensure code follows go conventions
-
-## Testing
-1. run tests
-2. add tests for new functionality
-3. ensure test coverage is adequate
+1. ensure code follows modern Go conventions
+2. `golangci-lint run --fix`
+3. `go test`
 
 ## Documentation
-1. add/update doc comments for symbols
+1. add/update doc comments for exported symbols
 2. document any new dependencies or requirements
-
-## Final Checks
-1. verify app builds: `go build`
-2. ensure no linting issues remain

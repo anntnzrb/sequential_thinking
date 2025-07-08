@@ -1,8 +1,7 @@
 # Suggested Commands
 
 ## Development
-- `go build`:- build project
-- `go mod tidy`: clean up module dependencies
-- `go fmt`: format code
-- `go vet` - static code analysis
-- `go test`: Run tests
+- `go build`: build project
+- `go test`: run tests
+- `golangci-lint run`: comprehensive linting + formatting check
+- `golangci-lint run --fix`: auto-fix all possible issues
