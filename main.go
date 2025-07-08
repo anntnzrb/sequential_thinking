@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
 	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/strowk/foxy-contexts/pkg/app"
@@ -56,41 +55,31 @@ func formatThought(data *ThoughtData) string {
 		return "Thought logging is disabled."
 	}
 
-	cyan := color.New(color.FgCyan).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	blue := color.New(color.FgBlue).SprintFunc()
-
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "%s %d (%d/%d)\n",
-		cyan("💭 Thought"), data.ThoughtNumber, data.ThoughtNumber, data.TotalThoughts)
+	fmt.Fprintf(&b, "💭 Thought %d/%d\n", data.ThoughtNumber, data.TotalThoughts)
 
 	if data.IsRevision != nil && *data.IsRevision && data.RevisesThought != nil {
-		fmt.Fprintf(&b, "%s %d\n",
-			red("🔄 Revising thought"), *data.RevisesThought)
+		fmt.Fprintf(&b, "🔄 Revising thought %d\n", *data.RevisesThought)
 	}
 
 	if data.BranchFromThought != nil {
-		fmt.Fprintf(&b, "%s %d",
-			blue("🌿 Branching from thought"), *data.BranchFromThought)
+		fmt.Fprintf(&b, "🌿 Branching from thought %d", *data.BranchFromThought)
 		if data.BranchID != "" {
-			fmt.Fprintf(&b, " (%s)", blue(data.BranchID))
+			fmt.Fprintf(&b, " (%s)", data.BranchID)
 		}
 		b.WriteString("\n")
 	}
 
 	fmt.Fprintf(&b, "\n%s\n", data.Thought)
 
+	status := "✓ Thinking complete"
 	if data.NextThoughtNeeded {
-		fmt.Fprintf(&b, "\n%s\n", green("→ More thinking needed"))
-	} else {
-		fmt.Fprintf(&b, "\n%s\n", green("✓ Thinking complete"))
+		status = "→ More thinking needed"
 	}
+	fmt.Fprintf(&b, "\n%s\n", status)
 
-	fmt.Fprintf(&b, "\n%s\n", cyan(fmt.Sprintf(
-		"Status: Thought %d/%d | Next needed: %v",
-		data.ThoughtNumber, data.TotalThoughts, data.NextThoughtNeeded)))
+	fmt.Fprintf(&b, "\nStatus: Thought %d/%d | Next needed: %v\n", data.ThoughtNumber, data.TotalThoughts, data.NextThoughtNeeded)
 
 	return b.String()
 }
