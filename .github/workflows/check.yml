@@ -1,0 +1,17 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: DeterminateSystems/determinate-nix-action@main
+    - run: nix develop --command go test ./...
+    - run: nix develop --command golangci-lint run
