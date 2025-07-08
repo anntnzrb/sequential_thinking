@@ -61,8 +61,8 @@ func TestValidateThoughtData(t *testing.T) {
 		if data.TotalThoughts != 3 {
 			t.Errorf("Expected totalThoughts = 3, got %d", data.TotalThoughts)
 		}
-		if data.NextThoughtNeeded != true {
-			t.Errorf("Expected nextThoughtNeeded = true, got %t", data.NextThoughtNeeded)
+		if data.NextThoughtNeeded == nil || !*data.NextThoughtNeeded {
+			t.Errorf("Expected nextThoughtNeeded = true, got %v", data.NextThoughtNeeded)
 		}
 	})
 
@@ -79,8 +79,8 @@ func TestValidateThoughtData(t *testing.T) {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
-		if data.NextThoughtNeeded != false {
-			t.Errorf("Expected nextThoughtNeeded = false, got %t", data.NextThoughtNeeded)
+		if data.NextThoughtNeeded == nil || *data.NextThoughtNeeded {
+			t.Errorf("Expected nextThoughtNeeded = false, got %v", data.NextThoughtNeeded)
 		}
 	})
 
@@ -245,7 +245,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "This is a test thought",
 			ThoughtNumber:     1,
 			TotalThoughts:     3,
-			NextThoughtNeeded: true,
+			NextThoughtNeeded: ptr(true),
 		}
 
 		output := formatThought(data)
@@ -270,7 +270,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "Final conclusion",
 			ThoughtNumber:     3,
 			TotalThoughts:     3,
-			NextThoughtNeeded: false,
+			NextThoughtNeeded: ptr(false),
 		}
 
 		output := formatThought(data)
@@ -291,7 +291,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "Revised thought",
 			ThoughtNumber:     2,
 			TotalThoughts:     3,
-			NextThoughtNeeded: true,
+			NextThoughtNeeded: ptr(true),
 			IsRevision:        ptr(true),
 			RevisesThought:    ptr(1),
 		}
@@ -308,7 +308,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "Branch thought",
 			ThoughtNumber:     2,
 			TotalThoughts:     4,
-			NextThoughtNeeded: true,
+			NextThoughtNeeded: ptr(true),
 			BranchFromThought: ptr(1),
 			BranchID:          "branch-a",
 		}
@@ -328,7 +328,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "Branch thought",
 			ThoughtNumber:     2,
 			TotalThoughts:     4,
-			NextThoughtNeeded: true,
+			NextThoughtNeeded: ptr(true),
 			BranchFromThought: ptr(1),
 		}
 
@@ -358,7 +358,7 @@ func TestFormatThought(t *testing.T) {
 			Thought:           "This should not appear",
 			ThoughtNumber:     1,
 			TotalThoughts:     3,
-			NextThoughtNeeded: true,
+			NextThoughtNeeded: ptr(true),
 		}
 
 		output := formatThought(data)
@@ -371,6 +371,129 @@ func TestFormatThought(t *testing.T) {
 }
 
 // Test NewSequentialThinkingTool function
+// Test automatic nextThoughtNeeded calculation
+func TestAutomaticNextThoughtNeededCalculation(t *testing.T) {
+	t.Run("automatic calculation when nextThoughtNeeded not provided", func(t *testing.T) {
+		// Test case 1: thoughtNumber < totalThoughts should set nextThoughtNeeded = true
+		args := map[string]any{
+			"thought":       "Test automatic calculation",
+			"thoughtNumber": 1,
+			"totalThoughts": 3,
+			// nextThoughtNeeded NOT provided - should be calculated automatically
+		}
+
+		data, err := validateThoughtData(args)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if data.NextThoughtNeeded == nil || !*data.NextThoughtNeeded {
+			t.Errorf("Expected automatic nextThoughtNeeded = true (1 < 3), got %v", data.NextThoughtNeeded)
+		}
+	})
+
+	t.Run("automatic calculation for final thought", func(t *testing.T) {
+		// Test case 2: thoughtNumber == totalThoughts should set nextThoughtNeeded = false
+		args := map[string]any{
+			"thought":       "Final thought",
+			"thoughtNumber": 3,
+			"totalThoughts": 3,
+			// nextThoughtNeeded NOT provided - should be calculated automatically
+		}
+
+		data, err := validateThoughtData(args)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if data.NextThoughtNeeded == nil || *data.NextThoughtNeeded {
+			t.Errorf("Expected automatic nextThoughtNeeded = false (3 == 3), got %v", data.NextThoughtNeeded)
+		}
+	})
+
+	t.Run("explicit override takes precedence", func(t *testing.T) {
+		// Test case 3: Explicit value should override automatic calculation
+		args := map[string]any{
+			"thought":           "Override test",
+			"thoughtNumber":     1,
+			"totalThoughts":     3,
+			"nextThoughtNeeded": false, // Explicit false despite 1 < 3
+		}
+
+		data, err := validateThoughtData(args)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if data.NextThoughtNeeded == nil || *data.NextThoughtNeeded {
+			t.Errorf("Expected explicit nextThoughtNeeded = false to override automatic calculation, got %v", data.NextThoughtNeeded)
+		}
+	})
+
+	t.Run("integration test with handler", func(t *testing.T) {
+		// Test the full flow including meta response
+		handler := func(args map[string]any) *mcp.CallToolResult {
+			data, err := validateThoughtData(args)
+			if err != nil {
+				return &mcp.CallToolResult{
+					IsError: ptr(true),
+					Content: []any{
+						mcp.TextContent{
+							Type: "text",
+							Text: fmt.Sprintf("Validation error: %v", err),
+						},
+					},
+				}
+			}
+
+			return &mcp.CallToolResult{
+				Content: []any{
+					mcp.TextContent{
+						Type: "text",
+						Text: formatThought(data),
+					},
+				},
+				IsError: ptr(false),
+				Meta: map[string]any{
+					"thoughtNumber":        data.ThoughtNumber,
+					"totalThoughts":        data.TotalThoughts,
+					"nextThoughtNeeded":    data.NextThoughtNeeded != nil && *data.NextThoughtNeeded,
+					"branches":             []any{},
+					"thoughtHistoryLength": 1,
+				},
+			}
+		}
+
+		// Test automatic calculation in meta response
+		args := map[string]any{
+			"thought":       "Integration test",
+			"thoughtNumber": 2,
+			"totalThoughts": 5,
+			// No nextThoughtNeeded provided
+		}
+
+		result := handler(args)
+
+		// Check meta data reflects automatic calculation
+		if result.Meta == nil {
+			t.Fatal("Expected meta data in result")
+		}
+
+		if nextNeeded, ok := result.Meta["nextThoughtNeeded"]; !ok || nextNeeded != true {
+			t.Errorf("Expected automatic nextThoughtNeeded = true in meta (2 < 5), got %v", nextNeeded)
+		}
+
+		// Check status display
+		content := result.Content[0].(mcp.TextContent)
+		if !strings.Contains(content.Text, "→ More thinking needed") {
+			t.Errorf("Expected 'More thinking needed' status in output, got: %s", content.Text)
+		}
+		if !strings.Contains(content.Text, "Next needed: true") {
+			t.Errorf("Expected 'Next needed: true' in status, got: %s", content.Text)
+		}
+	})
+}
+
 func TestNewSequentialThinkingTool(t *testing.T) {
 	t.Run("tool creation", func(t *testing.T) {
 		tool := NewSequentialThinkingTool()
@@ -579,7 +702,7 @@ func TestSequentialThinkingToolHandler(t *testing.T) {
 			Meta: map[string]any{
 				"thoughtNumber":        data.ThoughtNumber,
 				"totalThoughts":        data.TotalThoughts,
-				"nextThoughtNeeded":    data.NextThoughtNeeded,
+				"nextThoughtNeeded":    data.NextThoughtNeeded != nil && *data.NextThoughtNeeded,
 				"branches":             []any{},
 				"thoughtHistoryLength": 1,
 			},
@@ -820,7 +943,7 @@ func TestNewSequentialThinkingToolComprehensive(t *testing.T) {
 				Meta: map[string]any{
 					"thoughtNumber":        data.ThoughtNumber,
 					"totalThoughts":        data.TotalThoughts,
-					"nextThoughtNeeded":    data.NextThoughtNeeded,
+					"nextThoughtNeeded":    data.NextThoughtNeeded != nil && *data.NextThoughtNeeded,
 					"branches":             []any{},
 					"thoughtHistoryLength": 1,
 				},
@@ -914,7 +1037,7 @@ func BenchmarkFormatThought(b *testing.B) {
 		Thought:           "Benchmark test thought with some longer content to test formatting performance",
 		ThoughtNumber:     1,
 		TotalThoughts:     3,
-		NextThoughtNeeded: true,
+		NextThoughtNeeded: ptr(true),
 		IsRevision:        ptr(true),
 		RevisesThought:    ptr(1),
 		BranchFromThought: ptr(1),

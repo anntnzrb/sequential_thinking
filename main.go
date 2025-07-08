@@ -28,7 +28,7 @@ type ThoughtData struct {
 	BranchFromThought *int   `json:"branchFromThought,omitempty" mapstructure:"branchFromThought"`
 	BranchID          string `json:"branchId,omitempty" mapstructure:"branchId"`
 	NeedsMoreThoughts *bool  `json:"needsMoreThoughts,omitempty" mapstructure:"needsMoreThoughts"`
-	NextThoughtNeeded bool   `json:"nextThoughtNeeded" mapstructure:"nextThoughtNeeded"`
+	NextThoughtNeeded *bool  `json:"nextThoughtNeeded,omitempty" mapstructure:"nextThoughtNeeded"`
 }
 
 func validateThoughtData(args map[string]any) (*ThoughtData, error) {
@@ -45,6 +45,12 @@ func validateThoughtData(args map[string]any) (*ThoughtData, error) {
 
 	if data.ThoughtNumber > data.TotalThoughts {
 		return nil, fmt.Errorf("thoughtNumber cannot be greater than totalThoughts")
+	}
+
+	// Automatic calculation of NextThoughtNeeded if not explicitly provided
+	if data.NextThoughtNeeded == nil {
+		autoCalculated := data.ThoughtNumber < data.TotalThoughts
+		data.NextThoughtNeeded = &autoCalculated
 	}
 
 	return &data, nil
@@ -74,12 +80,14 @@ func formatThought(data *ThoughtData) string {
 	fmt.Fprintf(&b, "\n%s\n", data.Thought)
 
 	status := "✓ Thinking complete"
-	if data.NextThoughtNeeded {
+	nextNeeded := false
+	if data.NextThoughtNeeded != nil && *data.NextThoughtNeeded {
 		status = "→ More thinking needed"
+		nextNeeded = true
 	}
 	fmt.Fprintf(&b, "\n%s\n", status)
 
-	fmt.Fprintf(&b, "\nStatus: Thought %d/%d | Next needed: %v\n", data.ThoughtNumber, data.TotalThoughts, data.NextThoughtNeeded)
+	fmt.Fprintf(&b, "\nStatus: Thought %d/%d | Next needed: %v\n", data.ThoughtNumber, data.TotalThoughts, nextNeeded)
 
 	return b.String()
 }
@@ -162,7 +170,7 @@ func NewSequentialThinkingTool() fxctx.Tool {
 				Meta: map[string]any{
 					"thoughtNumber":        data.ThoughtNumber,
 					"totalThoughts":        data.TotalThoughts,
-					"nextThoughtNeeded":    data.NextThoughtNeeded,
+					"nextThoughtNeeded":    data.NextThoughtNeeded != nil && *data.NextThoughtNeeded,
 					"branches":             []any{},
 					"thoughtHistoryLength": 1,
 				},
