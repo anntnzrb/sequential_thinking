@@ -1,3 +1,4 @@
+// Package main implements a sequential thinking MCP server using foxy-contexts.
 package main
 
 import (
@@ -17,6 +18,7 @@ func ptr[T any](v T) *T {
 	return &v
 }
 
+// ThoughtData represents the input parameters for sequential thinking operations.
 type ThoughtData struct {
 	Thought           string `json:"thought"`
 	ThoughtNumber     int    `json:"thoughtNumber"`
@@ -29,7 +31,7 @@ type ThoughtData struct {
 	NextThoughtNeeded bool   `json:"nextThoughtNeeded"`
 }
 
-func validateThoughtData(args map[string]interface{}) (*ThoughtData, error) {
+func validateThoughtData(args map[string]any) (*ThoughtData, error) {
 	thought, ok := args["thought"].(string)
 	if !ok || thought == "" {
 		return nil, fmt.Errorf("thought is required and must be a non-empty string")
@@ -141,6 +143,7 @@ func formatThought(data *ThoughtData) string {
 	return b.String()
 }
 
+// NewSequentialThinkingTool creates and returns a new sequential thinking MCP tool.
 func NewSequentialThinkingTool() fxctx.Tool {
 	return fxctx.NewTool(
 		&mcp.Tool{
@@ -148,7 +151,7 @@ func NewSequentialThinkingTool() fxctx.Tool {
 			Description: ptr("A detailed tool for dynamic and reflective problem-solving through thoughts. This tool helps analyze problems through a flexible thinking process that can adapt and evolve. Each thought can build on, question, or revise previous insights as understanding deepens."),
 			InputSchema: mcp.ToolInputSchema{
 				Type: "object",
-				Properties: map[string]map[string]interface{}{
+				Properties: map[string]map[string]any{
 					"thought": {
 						"type":        "string",
 						"description": "Your current thinking step, which can include regular analytical steps, revisions of previous thoughts, questions about previous decisions, realizations about needing more analysis, changes in approach, hypothesis generation, or hypothesis verification.",
@@ -193,12 +196,12 @@ func NewSequentialThinkingTool() fxctx.Tool {
 				Required: []string{"thought", "nextThoughtNeeded", "thoughtNumber", "totalThoughts"},
 			},
 		},
-		func(args map[string]interface{}) *mcp.CallToolResult {
+		func(args map[string]any) *mcp.CallToolResult {
 			data, err := validateThoughtData(args)
 			if err != nil {
 				return &mcp.CallToolResult{
 					IsError: ptr(true),
-					Content: []interface{}{
+					Content: []any{
 						mcp.TextContent{
 							Type: "text",
 							Text: fmt.Sprintf("Validation error: %v", err),
@@ -208,18 +211,18 @@ func NewSequentialThinkingTool() fxctx.Tool {
 			}
 
 			return &mcp.CallToolResult{
-				Content: []interface{}{
+				Content: []any{
 					mcp.TextContent{
 						Type: "text",
 						Text: formatThought(data),
 					},
 				},
 				IsError: ptr(false),
-				Meta: map[string]interface{}{
+				Meta: map[string]any{
 					"thoughtNumber":        data.ThoughtNumber,
 					"totalThoughts":        data.TotalThoughts,
 					"nextThoughtNeeded":    data.NextThoughtNeeded,
-					"branches":             []interface{}{},
+					"branches":             []any{},
 					"thoughtHistoryLength": 1,
 				},
 			}
@@ -228,10 +231,12 @@ func NewSequentialThinkingTool() fxctx.Tool {
 }
 
 func main() {
-	app.NewBuilder().
+	if err := app.NewBuilder().
 		WithName("sequential-thinking").
 		WithVersion("1.0.0").
 		WithTool(NewSequentialThinkingTool).
 		WithTransport(stdio.NewTransport()).
-		Run()
+		Run(); err != nil {
+		os.Exit(1)
+	}
 }
