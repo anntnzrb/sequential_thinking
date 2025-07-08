@@ -865,7 +865,7 @@ func TestMainComponents(t *testing.T) {
 		}
 
 		// Test that main's configuration values are sensible
-		appName := "sequential-thinking"
+		appName := "sequential_thinking"
 		version := "1.0.0"
 
 		if len(appName) == 0 {

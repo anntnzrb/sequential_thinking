@@ -173,7 +173,7 @@ func NewSequentialThinkingTool() fxctx.Tool {
 
 func main() {
 	if err := app.NewBuilder().
-		WithName("sequential-thinking").
+		WithName("sequential_thinking").
 		WithVersion("1.0.0").
 		WithTool(NewSequentialThinkingTool).
 		WithTransport(stdio.NewTransport()).
